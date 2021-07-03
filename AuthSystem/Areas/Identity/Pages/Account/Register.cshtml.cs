@@ -24,17 +24,20 @@ namespace AuthSystem.Areas.Identity.Pages.Account
         private readonly UserManager<AuthSystemUser> _userManager;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
         public RegisterModel(
             UserManager<AuthSystemUser> userManager,
             SignInManager<AuthSystemUser> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
+            _roleManager = roleManager;
         }
 
         [BindProperty]
@@ -90,6 +93,15 @@ namespace AuthSystem.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User created a new account with password.");
+                    var roleExist = await _roleManager.RoleExistsAsync(Models.Enums.Roles.Basic.ToString());
+                    if (!roleExist)
+                    {
+                        var roleCreateResponse = await _roleManager.CreateAsync(new IdentityRole(Models.Enums.Roles.Basic.ToString()));
+                        if (roleCreateResponse.Succeeded)
+                        {
+                            await _userManager.AddToRoleAsync(user, Models.Enums.Roles.Basic.ToString());
+                        }
+                    }
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
